@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>外省血統計算器</title>
+<style>
+  :root {
+    --bg: #f6f3ee; --card: #fff; --ink: #2b2b2b; --muted: #777;
+    --line: #e2ddd5; --accent: #b5452f; --accent-soft: #f3ddd7; --partner: #2f6f8f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink); line-height: 1.6;
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { margin: 0 0 4px; font-size: 1.6rem; }
+  .sub { margin: 0 0 24px; color: var(--muted); font-size: .95rem; }
+
+  .block-title { margin: 24px 0 10px; font-size: 1.1rem; }
+  .block-title small { color: var(--muted); font-weight: 400; font-size: .85rem; }
+
+  .tree { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .side { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .side h2 { margin: 0 0 8px; font-size: .95rem; color: var(--muted); font-weight: 600; }
+  .person {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-top: 1px solid var(--line);
+  }
+  .person:first-of-type { border-top: 0; }
+  .person .name { font-weight: 600; }
+
+  .toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .toggle button {
+    border: 0; background: transparent; padding: 6px 12px; font: inherit; font-size: .9rem;
+    cursor: pointer; color: var(--muted);
+  }
+  .toggle button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .toggle button.no[aria-pressed="true"] { background: #555; }
+  .partner .toggle button.yes[aria-pressed="true"] { background: var(--partner); }
+
+  .parent-row {
+    margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--bg);
+    font-size: .9rem; color: var(--muted); text-align: center;
+  }
+
+  .kid-switch {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 24px; padding: 14px 16px; background: var(--card);
+    border: 1px dashed var(--accent); border-radius: 14px; cursor: pointer;
+  }
+  .kid-switch .txt { font-weight: 700; }
+  .kid-switch .txt small { display: block; font-weight: 400; color: var(--muted); font-size: .85rem; }
+  .switch {
+    position: relative; flex: none; width: 52px; height: 30px; border-radius: 999px;
+    background: #ccc; border: 0; cursor: pointer; transition: background .2s;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px;
+    border-radius: 50%; background: #fff; transition: transform .2s;
+  }
+  .switch[aria-checked="true"] { background: var(--accent); }
+  .switch[aria-checked="true"]::after { transform: translateX(22px); }
+
+  #partnerBlock[hidden] { display: none; }
+  .partner .side { border-color: #c9dbe5; }
+
+  .go {
+    display: block; width: 100%; margin-top: 24px; padding: 14px;
+    border: 0; border-radius: 12px; background: var(--accent); color: #fff;
+    font: inherit; font-size: 1.1rem; font-weight: 700; cursor: pointer;
+  }
+  .go:hover { filter: brightness(1.08); }
+  .note { margin-top: 28px; font-size: .82rem; color: var(--muted); }
+
+  @media (max-width: 480px) { .tree { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>外省血統計算器</h1>
+  <p class="sub">選擇四位祖父母是否為外省人，每位佔 25%；爸爸、媽媽各取其父母的平均。</p>
+
+  <h3 class="block-title">你的家族</h3>
+  <div class="tree">
+    <section class="side">
+      <h2>父系（爸爸那邊）</h2>
+      <div class="person"><span class="name">爺爺</span><span class="toggle" data-who="me" data-key="0"></span></div>
+      <div class="person"><span class="name">奶奶</span><span class="toggle" data-who="me" data-key="1"></span></div>
+      <div class="parent-row">↓ 爸爸</div>
+    </section>
+    <section class="side">
+      <h2>母系（媽媽那邊）</h2>
+      <div class="person"><span class="name">外公</span><span class="toggle" data-who="me" data-key="2"></span></div>
+      <div class="person"><span class="name">外婆</span><span class="toggle" data-who="me" data-key="3"></span></div>
+      <div class="parent-row">↓ 媽媽</div>
+    </section>
+  </div>
+
+  <div class="kid-switch" id="kidRow">
+    <div class="txt">我想幫孩子算算看
+      <small>打開後填寫伴侶的家族，算出孩子的分數</small>
+    </div>
+    <button type="button" class="switch" id="kidSwitch" role="switch" aria-checked="false" aria-label="我想幫孩子算算看"></button>
+  </div>
+
+  <div id="partnerBlock" class="partner" hidden>
+    <h3 class="block-title">伴侶的家族 <small>（伴侶的祖父母 → 伴侶的父母）</small></h3>
+    <div class="tree">
+      <section class="side">
+        <h2>伴侶的父系</h2>
+        <div class="person"><span class="name">爺爺</span><span class="toggle" data-who="partner" data-key="0"></span></div>
+        <div class="person"><span class="name">奶奶</span><span class="toggle" data-who="partner" data-key="1"></span></div>
+        <div class="parent-row">↓ 伴侶的爸爸</div>
+      </section>
+      <section class="side">
+        <h2>伴侶的母系</h2>
+        <div class="person"><span class="name">外公</span><span class="toggle" data-who="partner" data-key="2"></span></div>
+        <div class="person"><span class="name">外婆</span><span class="toggle" data-who="partner" data-key="3"></span></div>
+        <div class="parent-row">↓ 伴侶的媽媽</div>
+      </section>
+    </div>
+  </div>
+
+  <button type="button" class="go" id="go">看結果 →</button>
+
+  <p class="note">※ 本計算器僅為趣味用途。「外省人」是歷史與身分認同的概念，不是生物學上的血統，結果不代表任何人的認同或價值。</p>
+</main>
+
+<script>
+  const state = { me: [false, false, false, false], partner: [false, false, false, false] };
+  let kidMode = false;
+
+  document.querySelectorAll('.toggle').forEach(el => {
+    const who = el.dataset.who, i = +el.dataset.key;
+    el.innerHTML =
+      '<button type="button" class="yes" aria-pressed="false">外省</button>' +
+      '<button type="button" class="no" aria-pressed="true">非外省</button>';
+    const [yes, no] = el.querySelectorAll('button');
+    const set = v => {
+      state[who][i] = v;
+      yes.setAttribute('aria-pressed', v);
+      no.setAttribute('aria-pressed', !v);
+    };
+    yes.addEventListener('click', () => set(true));
+    no.addEventListener('click', () => set(false));
+  });
+
+  const kidSwitch = document.getElementById('kidSwitch');
+  const partnerBlock = document.getElementById('partnerBlock');
+  function setKid(v) {
+    kidMode = v;
+    kidSwitch.setAttribute('aria-checked', v);
+    partnerBlock.hidden = !v;
+  }
+  document.getElementById('kidRow').addEventListener('click', () => setKid(!kidMode));
+
+  const bits = arr => arr.map(b => b ? 1 : 0).join('');
+
+  document.getElementById('go').addEventListener('click', () => {
+    let url = 'result.html?f=' + bits(state.me);
+    if (kidMode) url += '&p=' + bits(state.partner);
+    location.href = url;
+  });
+</script>
+</body>
+</html>
